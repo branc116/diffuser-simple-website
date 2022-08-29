@@ -1,0 +1,4 @@
+[submodule "diffusers2"]
+	path = diffusers2
+	url = https://github.com/branc116/diffusers-nsfw.git
+	branch = master-nsfw
