@@ -29,7 +29,7 @@ vec2 create_matrix(vec3 i) {
     mat3 scale = mat3(zoom, 0, 0,
                       0, zoom, 0,
                       0, 0, 1);
-    return (offset * rotate * scale * vec3(i.xy, 1)).xy;
+    return (rotate * offset * scale * vec3(i.xy, 1)).xy;
 }
 
 void main(void)
@@ -42,7 +42,7 @@ void main(void)
         return;
     }
     if (mmod == 1) {
-        gl_FragColor = 0.5 * vec4(generate_noise(p), 1.0);
+        //gl_FragColor = 0.5 * vec4(generate_noise(p), 1.0);
     }else {
         gl_FragColor = texture2D(tex1, p*vec2(1.0, -1.0) + 0.5);
         //p = vec2(pow(abs(p.x), 0.1), pow(abs(p.y), 0.1));
