@@ -1,7 +1,7 @@
 #this will swapn a simple website that on get requests returns form and on post request returns image
-from fileinput import filename
 import http.server
-from typing import BinaryIO
+from imp import load_source
+from typing import BinaryIO, Callable
 from PIL import Image
 from io import BytesIO
 import base64
@@ -9,6 +9,10 @@ import urllib.parse
 import datetime
 import os
 import numpy as np
+from .diffusers2.src.diffusers import StableDiffusionImg2ImgPipeline
+from . import Args
+import torch
+from torch import autocast
 
 file_extension_to_mime_type: dict[str, str] = {
     "html": 'text/html',
@@ -67,6 +71,8 @@ def list_old_images(file: BinaryIO):
     file.write(b"</ul>")
 def get_newest_modify_date_recursivly(path: str) -> float:
     newest_modify_date = 0.0
+    if not os.path.isdir(path):
+        return os.path.getmtime(path)
     for file in os.listdir(path):
         file_path = os.path.join(path, file)
         if os.path.isdir(file_path):
@@ -94,15 +100,53 @@ class CreateImage:
         buff = BytesIO()
         image.save(buff, format="JPEG", quality=97)
         return buff
+class CreateImage2Image:
+    def __init__(self):
+        s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
+        self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
+        self.call: Callable[[Args], Image.Image] = s.__dict__["__call__"]
+        self.autocast = autocast
+        pipe = StableDiffusionImg2ImgPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, use_auth_token=True)
+        self.pipe = pipe.to("cuda")
+        self.generator = generator = torch.Generator(device="cuda").manual_seed(0)
+    def prompt(self, promp, imaz, number_of_iterations) -> BytesIO:
+        try:
+            if (get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py") != self.old):
+                s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
+                self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
+                self.call = s.__dict__["__call__"]
+                print("loading new dynamic call")
+            with self.autocast("cuda"):
+                image : Image  = self.call(Args(self.pipe, promp, imaz, guidance_scale=7.5, num_inference_steps=number_of_iterations))[0]
+            safe_name = str(datetime.datetime.now()).replace(":", ".").replace(" ", "_") + "".join([x for x in promp if x.isalnum()])[:50]
+            image.save("imgs/" + safe_name + ".png")
+            buff = BytesIO()
+            image.save(buff, format="JPEG", quality=97)
+            return buff
+        except Exception as e:
+            print(e)
+        return BytesIO()
 class DickButImage:
     def __init__(self) -> None:
         with open("imgs/dickbut.jpeg", "rb") as f:
             self.img = BytesIO(f.read())
+        s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
+        self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
+        self.call: Callable[[Args], Image.Image] = s.__dict__["__call__"]
     def prompt(self, promp, imaz, number_of_iterations):
+        try:
+            if (get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py") != self.old):
+                s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
+                self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
+                self.call = s.__dict__["__call__"]
+                print("loading new dynamic call")
+            self.call(Args(None, promp, imaz, num_inference_steps=number_of_iterations))
+        except Exception as e:
+            print(e)
         return self.img
 
 print("Starting server")
-img_create = CreateImage()
+img_create = CreateImage2Image()
 print("Started server")
 imageId = 69
 class WebSite(http.server.BaseHTTPRequestHandler):
@@ -111,8 +155,8 @@ class WebSite(http.server.BaseHTTPRequestHandler):
         if route == "":
             self.path = "/index.html"
             self.handle_static_file()
-        elif route[0] == "imgs":
-            self.handle_imgs(route[1])
+        elif route[1] == "imgs":
+            self.handle_imgs(route[2])
         elif route[0] == "favicon.ico":
             self.send_error(404, "File not found")
         elif self.path.strip("/") == "last-modified":
@@ -142,18 +186,15 @@ class WebSite(http.server.BaseHTTPRequestHandler):
         write_form(self.wfile, "")
         list_old_images(self.wfile)
     def handle_imgs(self, img_name):
-        file_name = self.path.lstrip("/")
-        
+        file_name = img_name
         if (file_name not in os.listdir("imgs")):
             self.send_error(404, "File not found")
             return
         self.send_response(200)
-        self.send_header('Content-type', 'image/png')
+        self.send_header('Content-type', f'image/{file_name.split(".")[-1]}')
         self.end_headers()
-        self.wfile.write(b'<img src="data:image/png;base64,')
         with open("imgs/" + file_name, "rb") as img_file:
-            self.wfile.write(base64.b64encode(img_file.read()))
-        self.wfile.write(b'"/>')
+            self.wfile.write(img_file.read())
     def handle_static_file(self):
         file_name = "www/" + self.path.lstrip("/")
         if (not os.path.exists(file_name)):
@@ -170,7 +211,10 @@ class WebSite(http.server.BaseHTTPRequestHandler):
         with open(file_name, "rb") as file:
             self.wfile.write(file.read())
 
-if __name__ == "__main__":
+def main():
     server_address = ("", 8080)
     httpd = http.server.HTTPServer(server_address, WebSite)
     httpd.serve_forever()
+
+if __name__ == "__main__":
+    main()
