@@ -31,10 +31,14 @@ const startApp = async () => {
   glContext.bindBuffer(glContext.ARRAY_BUFFER, rectBuffer);
   glContext.bufferData(
     glContext.ARRAY_BUFFER,
+    // prettier-ignore
     new Float32Array([
-      -1.0, -1.0, -1.0, 1.0, 1.0, 1.0,
-
-      -1.0, -1.0, 1.0, -1.0, 1.0, 1.0,
+      -1.0, -1.0,
+      -1.0,  1.0,
+       1.0,  1.0,
+      -1.0, -1.0,
+       1.0, -1.0,
+       1.0,  1.0,
     ]),
     glContext.STATIC_DRAW
   );
@@ -42,7 +46,6 @@ const startApp = async () => {
   glContext.bindBuffer(glContext.ELEMENT_ARRAY_BUFFER, rectIndexBuffer);
   glContext.bufferData(glContext.ELEMENT_ARRAY_BUFFER, new Uint16Array([0, 1, 2, 0, 2, 3]), glContext.STATIC_DRAW);
   //   const zoomAndOffset = getZoomAndOffset();
-  console.log(glContext);
   const programs = await Promise.all([
     createProgram(
       'noise_vert.glsl',
@@ -94,18 +97,89 @@ const startApp = async () => {
 };
 
 const setUpCanvasListeners = () => {
-  canvas.addEventListener('wheel', (e) => {});
+  const pointerData = { isDown: false, x: 0, y: 0, ids: new Set([]) };
+  canvas.addEventListener('pointerdown', (e) => {
+    pointerData.isDown = true;
+    pointerData.ids.add(e.pointerId);
+    pointerData.x = e.clientX;
+    pointerData.y = e.clientY;
+    console.log(pointerData);
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    pointerData.isDown = false;
+    pointerData.ids.delete(e.pointerId);
+  });
+
+  canvas.addEventListener('pointercancel', (e) => {
+    pointerData.isDown = false;
+    pointerData.ids.delete(e.pointerId);
+  });
+  canvas.addEventListener('pointerout', (e) => {
+    pointerData.isDown = false;
+    pointerData.ids.delete(e.pointerId);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pointerData.isDown) return;
+    log(JSON.stringify({ x: e.clientX, y: e.clientY, ids: Array.from(pointerData.ids) }, null, 2));
+    const fingerCount = Array.from(pointerData.ids).length;
+    const deltaX = e.clientX - pointerData.x;
+    const deltaY = e.clientY - pointerData.y;
+    if (fingerCount >= 1) {
+      zoomAndOffset.offset.x += deltaX * 2 * zoomAndOffset.zoom;
+      zoomAndOffset.offset.y += deltaY * 2 * zoomAndOffset.zoom;
+      pointerData.x = e.clientX;
+      pointerData.y = e.clientY;
+    }
+    if (fingerCount === 2) {
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'ArrowDown':
+        zoomAndOffset.offset.y -= (e.ctrlKey ? 100 : 10) * zoomAndOffset.zoom * (e.key === 'ArrowUp' ? 1 : -1);
+        break;
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        zoomAndOffset.offset.x -= (e.ctrlKey ? 100 : 10) * zoomAndOffset.zoom * (e.key === 'ArrowLeft' ? 1 : -1);
+        break;
+      case '4':
+        zoomAndOffset.angle += 0.1;
+        break;
+      case '6':
+        zoomAndOffset.angle -= 0.1;
+        break;
+      case '+':
+        zoomAndOffset.zoom /= 1.1;
+        break;
+      case '-':
+        zoomAndOffset.zoom *= 1.1;
+        break;
+    }
+  });
 };
 
 // startAppBtn.addEventListener('click', startApp);
-generateBtn.addEventListener('click', () =>
+generateBtn.addEventListener('click', () => {
+  const stat = document.getElementById('statusLabel');
+  stat.style.display = 'block';
   startImageGeneration(
     canvas,
     parseInt(numberOfIterationsElem.value),
     sendRefElem.checked,
     animateElem.checked,
-    descriptionElem.value
-  )
-);
+    descriptionElem.value,
+    () => {
+      stat.style.display = 'none';
+      zoomAndOffset.angle = 0;
+      zoomAndOffset.offset.x = 0;
+      zoomAndOffset.offset.y = 0;
+      zoomAndOffset.zoom = 1;
+    }
+  );
+});
 
+setUpCanvasListeners();
 startApp();

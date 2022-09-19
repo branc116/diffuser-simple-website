@@ -61,12 +61,12 @@ const generateImage = async (numberOfIterations, blob, sendRef, description) => 
   appendBlobImage(blobResponse.slice(4, blobResponse.size, 'image/png'));
 };
 
-const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate, description) => {
+const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate, description, onFinish) => {
   if (sendRef) {
     canvas.toBlob(
       async (blob) => {
         if (animate) {
-          for (let i = 0; i < numberOfIterations; i++) {
+          for (let i = 0; i <= numberOfIterations; i++) {
             try {
               await generateImage(i, blob, sendRef, description);
             } catch (e) {
@@ -74,12 +74,16 @@ const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate
             }
           }
         } else await generateImage(numberOfIterations, blob, sendRef, description);
+        onFinish()
       },
       'image/jpeg',
       0.8
     );
-  } else await generateImage(numberOfIterations, blob, sendRef, description);
-};
+  } else {
+    await generateImage(numberOfIterations, undefined, sendRef, description);
+    onFinish()
+  }
+}; //mislim da je tak bolje jes jes jes
 
 const createShader = (type, source, canvasWebGlContext) => {
   const shader = canvasWebGlContext?.createShader(type);

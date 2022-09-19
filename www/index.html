@@ -16,19 +16,19 @@
   <div style="display: flex; justify-content: center; flex-wrap: wrap;">
     <div action="/" method="post" style="margin: 2rem">
       <label for="description">Enter what you want to generate: </label><br>
-      <textarea id="description" name="message" rows="10" cols="50"></textarea><br>
-      <input id="iterations" name="IterNum" type="number">Number of Iterations</input><br>
+      <textarea id="description" name="message" rows="10" cols="50">Random</textarea><br>
+      <input id="iterations" name="IterNum" type="number" value="10">Number of Iterations</input><br>
       <button id="generate" >Generate</button>
-      <input type="checkbox" id="animate" name="animate" value="che" checked>Animate</input><br>
+      <input type="checkbox" id="animate" name="animate">Animate</input><br>
     </div>
     <div>
-      <input type="checkbox" id="sendRef" name="checkbox" value="che" checked>Send ref</input><br>
-      <canvas id="canvas" width="512" height="512" style="background-color: red; width: 512px; height: 512px;"></canvas>
+      <label for="status" id="statusLabel" style="display: none;">Generating...</label>
+      <input type="checkbox" id="sendRef" name="checkbox" checked>Send ref</input><br>
+      <canvas id="canvas" width="512" height="512" style="background-color: red; touch-action: none;"></canvas>
     </div>
     <div>
       <textarea name="log" id="logarea" cols="30" rows="10">Nothing</textarea>
     </div>
   </div>
 </body>
-
 </html>
