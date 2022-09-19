@@ -1,4 +1,4 @@
-export const enableHotReload = () => {
+const enableHotReload = () => {
   const date = new Date().getTime();
   const checkReload = async () => {
     const lastModified = await fetch('last-modified').then((resp) => resp.json());
@@ -7,7 +7,7 @@ export const enableHotReload = () => {
   setInterval(checkReload, 1512);
 };
 
-export const numberToUint8Array = (number) => {
+const numberToUint8Array = (number) => {
   const array = new Uint8Array(4);
   array[0] = (number >> 0) & 0xff;
   array[1] = (number >> 8) & 0xff;
@@ -16,13 +16,13 @@ export const numberToUint8Array = (number) => {
   return array;
 };
 
-export const isPowerOf2 = (value) => value & (value - 1 === 0);
+const isPowerOf2 = (value) => value & (value - 1 === 0);
 
-export const log = (msg) => {
+const log = (msg) => {
   logArea.innerHTML = msg;
 };
 
-export const appendBlobImage = (blob) => {
+const appendBlobImage = (blob) => {
   const img = new Image();
   img.src = URL.createObjectURL(blob);
   document.body.appendChild(img);
@@ -30,7 +30,7 @@ export const appendBlobImage = (blob) => {
   if (cb) cb(img);
 };
 
-export const generateImage = async (numberOfIterations, blob, sendRef, description) => {
+const generateImage = async (numberOfIterations, blob, sendRef, description) => {
   if (numberOfIterations == 3) numberOfIterations++;
 
   const blobToSend = sendRef
@@ -61,7 +61,7 @@ export const generateImage = async (numberOfIterations, blob, sendRef, descripti
   appendBlobImage(blobResponse.slice(4, blobResponse.size, 'image/png'));
 };
 
-export const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate, description) => {
+const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate, description) => {
   if (sendRef) {
     canvas.toBlob(
       async (blob) => {
@@ -81,8 +81,8 @@ export const startImageGeneration = async (canvas, numberOfIterations, sendRef, 
   } else await generateImage(numberOfIterations, blob, sendRef, description);
 };
 
-export const createShader = (type, source, canvasWebGlContext) => {
-  const shader = canvasWebGlContext.createShader(type);
+const createShader = (type, source, canvasWebGlContext) => {
+  const shader = canvasWebGlContext?.createShader(type);
   if (!shader) {
     alert('unable to create shader');
     return null;
@@ -97,7 +97,7 @@ export const createShader = (type, source, canvasWebGlContext) => {
   return shader;
 };
 
-export const createProgram = async (verShader, fragShader, uniforms, attributes, canvasWebGlContext) => {
+const createProgram = async (verShader, fragShader, uniforms, attributes, canvasWebGlContext) => {
   const program = canvasWebGlContext.createProgram();
   if (!program) {
     alert('Unable to create program');
@@ -109,8 +109,8 @@ export const createProgram = async (verShader, fragShader, uniforms, attributes,
   const fragReq = await fetch('shaders/' + fragShader);
   const fragSource = await fragReq.text();
 
-  canvasWebGlContext.attachShader(program, createShader(canvasWebGlContext.VERTEX_SHADER, vertSource));
-  canvasWebGlContext.attachShader(program, createShader(canvasWebGlContext.FRAGMENT_SHADER, fragSource));
+  canvasWebGlContext.attachShader(program, createShader(canvasWebGlContext.VERTEX_SHADER, vertSource, canvasWebGlContext));
+  canvasWebGlContext.attachShader(program, createShader(canvasWebGlContext.FRAGMENT_SHADER, fragSource, canvasWebGlContext));
   canvasWebGlContext.linkProgram(program);
   if (!canvasWebGlContext.getProgramParameter(program, canvasWebGlContext.LINK_STATUS)) {
     alert('Unable to initialize the shader program: ' + canvasWebGlContext.getProgramInfoLog(program));

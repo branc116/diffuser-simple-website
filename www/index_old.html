@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diffuser Smol website</title>
+</head>
+
+<body>
+  <h1>This is a web site to generate images from text</h1>
+  <!-- form on the center of the page -->
+  <div style="display: flex; justify-content: center; flex-wrap: wrap;">
+    <div action="/" method="post" style="margin: 2rem">
+      <label for="description">Enter what you want to generate: </label><br>
+      <textarea id="description" name="message" rows="10" cols="50"></textarea><br>
+      <input id="iterNum" name="IterNum" type="number">Number of Iterations</input><br>
+      <button id="submit" href="#">Generate</button>
+      <input type="checkbox" id="animate" name="animate" value="che" checked>Animate</input><br>
+    </div>
+    <div>
+      <input type="checkbox" id="checkbox" name="checkbox" value="che" checked>Send ref</input><br>
+      <canvas id="canvas" width="512" height="512" style="background-color: red; width: 512px; height: 512px;"></canvas>
+    </div>
+    <div>
+      <textarea name="log" id="logarea" cols="30" rows="10">Nothing</textarea>
+    </div>
+  </div>
+</body>
+<script>
+  //Hotreload
+  const date = new Date().getTime();
+  const checkReload = async () => {
+    const lastModified = await fetch("last-modified").then(response => response.json());
+    if (lastModified > date) location.reload()
+  };
+  setInterval(checkReload, 1512);
+</script>
+<script>
+  //Convert number to Uint8array
+  const numberToUint8Array = (number) => {
+    const array = new Uint8Array(4);
+    array[0] = (number >> 0) & 0xff;
+    array[1] = (number >> 8) & 0xff;
+    array[2] = (number >> 16) & 0xff;
+    array[3] = (number >> 24) & 0xff;
+    return array;
+  }
+  const appendBlobImage = (blob) => {
+
+    const img = new Image()
+    img.src = URL.createObjectURL(blob);
+    document.getElementsByTagName("body")[0].appendChild(img);
+    const cb = window["image_loaded"];
+    if (cb) cb(img);
+  }
+  const desc = document.getElementById("description");
+  const can = document.getElementsByTagName("canvas")[0];
+  const cb = document.getElementById("checkbox");
+  const iterNum = document.getElementById("iterNum");
+  const animate = document.getElementById("animate");
+
+  document.getElementById("submit").addEventListener("click", async () => {
+    const doit = async (iters, blob) => {
+      if (iters == 3) iters++;
+      const bToSend = cb.checked
+        ? new Blob([numberToUint8Array(69), numberToUint8Array(420), numberToUint8Array(iters), numberToUint8Array(blob.size), blob, desc.value])
+        : new Blob([numberToUint8Array(69), numberToUint8Array(420), numberToUint8Array(iters), numberToUint8Array(0xFFFFFFFF), desc.value])
+
+      const r = await fetch(".", {
+        method: "POST",
+        body: bToSend,
+        headers: {
+          "Content-Type": "application/octet-stream"
+        }
+      });
+      const blb = await r.blob();
+      await appendBlobImage(blb.slice(4, blb.size, "image/png"));
+    }
+    if (cb.checked)
+      can.toBlob(async (blob) => {
+        if (animate.checked)
+          for (let i = 0; i < iterNum.value; i++) {
+            try {
+              await doit(i, blob);
+            } catch (ex) {
+              console.log(ex);
+            }
+          }
+        else
+          await doit(parseInt(iterNum.value), blob);
+      }, "image/jpeg", 0.80);
+    else
+      await doit(parseInt(iterNum.value), undefined);
+    return false;
+  });
+</script>
+<script src="index.js"></script>
+
+</html>
