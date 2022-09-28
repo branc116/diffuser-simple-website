@@ -97,42 +97,32 @@ const startApp = async () => {
 };
 
 const setUpCanvasListeners = () => {
-  const pointerData = { isDown: false, x: 0, y: 0, ids: new Set([]) };
-  canvas.addEventListener('pointerdown', (e) => {
-    pointerData.isDown = true;
-    pointerData.ids.add(e.pointerId);
-    pointerData.x = e.clientX;
-    pointerData.y = e.clientY;
-    console.log(pointerData);
-  });
-  canvas.addEventListener('pointerup', (e) => {
-    pointerData.isDown = false;
-    pointerData.ids.delete(e.pointerId);
+  const hammertime = new Hammer(canvas);
+  hammertime.get('pinch').set({ enable: true });
+  hammertime.get('rotate').set({ enable: true });
+  hammertime.get('pan').set({ direction: Hammer.DIRECTION_ALL });
+  let prevZoomAndOffset = structuredClone(zoomAndOffset);
+  let touchDownRotation = 0;
+
+  hammertime.on('pinch', (e) => {
+    if (e.deltaTime < 30) touchDownRotation = e.rotation;
+    zoomAndOffset.zoom = 1 / e.scale + prevZoomAndOffset.zoom - 1;
+    zoomAndOffset.offset.x = e.deltaX * 2 * zoomAndOffset.zoom + prevZoomAndOffset.offset.x;
+    zoomAndOffset.offset.y = e.deltaY * 2 * zoomAndOffset.zoom + prevZoomAndOffset.offset.y;
+    zoomAndOffset.angle = ((e.rotation - touchDownRotation) * Math.PI) / 180.0 + prevZoomAndOffset.angle;
+    if (e.isFinal) prevZoomAndOffset = structuredClone(zoomAndOffset);
   });
 
-  canvas.addEventListener('pointercancel', (e) => {
-    pointerData.isDown = false;
-    pointerData.ids.delete(e.pointerId);
-  });
-  canvas.addEventListener('pointerout', (e) => {
-    pointerData.isDown = false;
-    pointerData.ids.delete(e.pointerId);
-  });
+  hammertime.on('pan', (e) => {
+    zoomAndOffset.offset.x = e.deltaX * 2 * zoomAndOffset.zoom + prevZoomAndOffset.offset.x;
+    zoomAndOffset.offset.y = e.deltaY * 2 * zoomAndOffset.zoom + prevZoomAndOffset.offset.y;
+    if (e.isFinal) prevZoomAndOffset = structuredClone(zoomAndOffset);
+  }); // ma dobro je to!
 
-  canvas.addEventListener('pointermove', (e) => {
-    if (!pointerData.isDown) return;
-    log(JSON.stringify({ x: e.clientX, y: e.clientY, ids: Array.from(pointerData.ids) }, null, 2));
-    const fingerCount = Array.from(pointerData.ids).length;
-    const deltaX = e.clientX - pointerData.x;
-    const deltaY = e.clientY - pointerData.y;
-    if (fingerCount >= 1) {
-      zoomAndOffset.offset.x += deltaX * 2 * zoomAndOffset.zoom;
-      zoomAndOffset.offset.y += deltaY * 2 * zoomAndOffset.zoom;
-      pointerData.x = e.clientX;
-      pointerData.y = e.clientY;
-    }
-    if (fingerCount === 2) {
-    }
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (e.deltaY > 0) zoomAndOffset.zoom *= 1.1;
+    else zoomAndOffset.zoom /= 1.1;
   });
 
   document.addEventListener('keydown', (e) => {
@@ -161,10 +151,10 @@ const setUpCanvasListeners = () => {
   });
 };
 
-// startAppBtn.addEventListener('click', startApp);
-generateBtn.addEventListener('click', () => {
-  const stat = document.getElementById('statusLabel');
-  stat.style.display = 'block';
+generateBtn.addEventListener('click', (e) => {
+  generateBtn.disabled = true;
+  generateBtn.style.opacity = 0.8;
+  generateBtn.innerHTML = `${loadingSvg} Generating image...`;
   startImageGeneration(
     canvas,
     parseInt(numberOfIterationsElem.value),
@@ -172,14 +162,27 @@ generateBtn.addEventListener('click', () => {
     animateElem.checked,
     descriptionElem.value,
     () => {
-      stat.style.display = 'none';
+      generateBtn.disabled = false;
+      generateBtn.style.opacity = 1;
+      generateBtn.innerHTML = 'Generate image';
       zoomAndOffset.angle = 0;
       zoomAndOffset.offset.x = 0;
       zoomAndOffset.offset.y = 0;
       zoomAndOffset.zoom = 1;
-    }
+    },
+    (count) => (generateBtn.innerHTML = `${loadingSvg} Generating image... ${count}`)
   );
+});
+
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('generated-image')) {
+    const cb = window['image_loaded'];
+    if (cb) cb(e.target);
+  }
 });
 
 setUpCanvasListeners();
 startApp();
+
+const loadingSvg =
+  '<svg width="32px" height="32px" viewBox="0 0 100 100" class="animate-spin" ><circle cx="50" cy="50" r="32" stroke-width="8" stroke="#ffffff" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round"></circle></svg>';

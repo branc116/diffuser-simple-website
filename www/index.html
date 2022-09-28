@@ -4,31 +4,55 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, user-scalable=no">
   <title>Diffuser Smol website</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js" defer></script>
   <script src="utils.js" defer ></script>
   <script src="script.js" defer ></script>
 </head>
 
-<body>
-  <h1>This is a web site to generate images from text</h1>
-  <!-- form on the center of the page -->
-  <div style="display: flex; justify-content: center; flex-wrap: wrap;">
-    <div action="/" method="post" style="margin: 2rem">
-      <label for="description">Enter what you want to generate: </label><br>
-      <textarea id="description" name="message" rows="10" cols="50">Random</textarea><br>
-      <input id="iterations" name="IterNum" type="number" value="10">Number of Iterations</input><br>
-      <button id="generate" >Generate</button>
-      <input type="checkbox" id="animate" name="animate">Animate</input><br>
-    </div>
-    <div>
-      <label for="status" id="statusLabel" style="display: none;">Generating...</label>
-      <input type="checkbox" id="sendRef" name="checkbox" checked>Send ref</input><br>
-      <canvas id="canvas" width="512" height="512" style="background-color: red; touch-action: none;"></canvas>
-    </div>
-    <div>
-      <textarea name="log" id="logarea" cols="30" rows="10">Nothing</textarea>
-    </div>
-  </div>
+<body class="bg-gray-100">
+  <header class="p-5 text-3xl font-bold text-center">
+    <h1>This is a web site to generate images from text</h1>
+  </header>
+  <main class="container p-5 mx-auto max-w-6xl grid grid-cols-1 gap-8 md:grid-cols-2">
+    <section class="flex flex-col w-full mb-3">
+      <div class="flex flex-col gap-2 my-3">
+        <label class="text-lg font-semibold" for="description">Enter what you want to generate:</label>
+        <textarea class="border-2 p-2 rounded-lg" id="description" rows="3">pussy cat</textarea>
+      </div>
+      <div class="flex justify-between items-center mb-3">
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <input type="checkbox" id="animate"  />
+            <label for="animate">Animate generation</label>
+          </div>
+          <div class="flex gap-2">
+            <input type="checkbox" id="sendRef" checked="true" />
+            <label for="sendRef">Send reference</label>
+          </div>
+        </div>
+        <div class="text-right">
+          <label for="iterations">Number of iterations:</label>
+          <input class="border-2 rounded w-24 text-center" type="number" id="iterations" value="10" step="5">
+        </div>
+      </div>
+      <button class="w-full my-3 p-2 flex items-center justify-center rounded-xl text-white font-bold bg-indigo-500 hover:bg-indigo-400" id="generate">
+        Generate image
+      </button>
+    </section>
+    <section class="w-full mb-3 row-span-2">
+      <span>Reference image:</span>
+      <canvas class="w-full" id="canvas" width="512" height="512" style="background-color: hotpink; touch-action: none;"></canvas>
+    </section>
+    <section class="w-full">
+      <textarea class="border-2 w-full rounded-lg p-2" id="logarea" rows="8" disabled>Debugging area</textarea>
+    </section>
+  </main>
+  <section >
+    <h3 class="text-xl font-semibold p-5 text-center">Image output:</h3>
+    <div id="imageOutput" class="overflow-x-auto scroll-smooth flex gap-4 mb-10"></div>
+  </section>
 </body>
 </html>

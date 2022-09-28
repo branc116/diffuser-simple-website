@@ -25,7 +25,8 @@ const log = (msg) => {
 const appendBlobImage = (blob) => {
   const img = new Image();
   img.src = URL.createObjectURL(blob);
-  document.body.appendChild(img);
+  img.classList.add('aspect-square', 'max-w-full', 'shrink-0', 'generated-image');
+  document.getElementById('imageOutput').prepend(img);
   const cb = window['image_loaded'];
   if (cb) cb(img);
 };
@@ -61,29 +62,34 @@ const generateImage = async (numberOfIterations, blob, sendRef, description) => 
   appendBlobImage(blobResponse.slice(4, blobResponse.size, 'image/png'));
 };
 
-const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate, description, onFinish) => {
+const startImageGeneration = async (canvas, numberOfIterations, sendRef, animate, description, onFinish, imageGenerateCount) => {
   if (sendRef) {
     canvas.toBlob(
       async (blob) => {
         if (animate) {
-          for (let i = 0; i <= numberOfIterations; i++) {
+          for (let i = 1; i <= numberOfIterations; i++) {
             try {
+              imageGenerateCount(`${i}/${numberOfIterations}`);
               await generateImage(i, blob, sendRef, description);
             } catch (e) {
               console.log(e);
             }
           }
-        } else await generateImage(numberOfIterations, blob, sendRef, description);
-        onFinish()
+        } else {
+          imageGenerateCount(`1/1`);
+          await generateImage(numberOfIterations, blob, sendRef, description);
+        }
+        onFinish();
       },
       'image/jpeg',
       0.8
     );
   } else {
+    imageGenerateCount(`1/1`);
     await generateImage(numberOfIterations, undefined, sendRef, description);
-    onFinish()
+    onFinish();
   }
-}; //mislim da je tak bolje jes jes jes
+};
 
 const createShader = (type, source, canvasWebGlContext) => {
   const shader = canvasWebGlContext?.createShader(type);
