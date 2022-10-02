@@ -2,3 +2,4 @@ imgs
 intermidiate
 __pycache__
 test.png
+**/*.db
