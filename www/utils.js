@@ -7,15 +7,6 @@ const enableHotReload = () => {
   setInterval(checkReload, 1512);
 };
 
-const numberToUint8Array = (number) => {
-  const array = new Uint8Array(4);
-  array[0] = (number >> 0) & 0xff;
-  array[1] = (number >> 8) & 0xff;
-  array[2] = (number >> 16) & 0xff;
-  array[3] = (number >> 24) & 0xff;
-  return array;
-};
-
 const isPowerOf2 = (value) => value & (value - 1 === 0);
 
 const log = (msg) => {

@@ -21,6 +21,8 @@ const glContext = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
 
 const zoomAndOffset = { zoom: 1, offset: { x: 0, y: 0 }, angle: 0 };
 
+const api = new Api();
+
 const startApp = async () => {
   if (!glContext) {
     alert('WebGL 2 is not available');
@@ -62,7 +64,7 @@ const startApp = async () => {
       glContext
     ),
   ]);
-  const texture1 = loadTexture('imgs/astronaut_rides_horse.png', glContext);
+  const texture1 = loadTexture('api/image/1', glContext);
 
   const draw = () => {
     glContext.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -180,9 +182,9 @@ document.addEventListener('click', (e) => {
     if (cb) cb(e.target);
   }
 });
+api.register("cunt");
 
 setUpCanvasListeners();
 startApp();
-
 const loadingSvg =
   '<svg width="32px" height="32px" viewBox="0 0 100 100" class="animate-spin" ><circle cx="50" cy="50" r="32" stroke-width="8" stroke="#ffffff" stroke-dasharray="50.26548245743669 50.26548245743669" fill="none" stroke-linecap="round"></circle></svg>';
