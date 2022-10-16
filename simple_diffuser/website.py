@@ -1,6 +1,6 @@
 #this will swapn a simple website that on get requests returns form and on post request returns image
 import http.server
-from imp import load_source
+from .DynamicHelper import DynamicHelper
 from typing import BinaryIO, Callable
 from PIL import Image
 from io import BytesIO
@@ -44,31 +44,6 @@ class GenImageRequest:
         c = np.array(ii) # (512, 512, 3)
         return c
 
-    
-
-def write_form(file: BinaryIO, value: str):
-    file.write(b"""\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Generate</title>
-</head>
-<body>
-    <form method="POST" action="">
-        <input type="textbox" name="message" value='""" + value.encode("UTF-8") + b"""' >
-        <input type="submit" value="Submit">
-    </form>
-""")
-
-
-def list_old_images(file: BinaryIO):
-    file.write(b"<h1>Images</h1>")
-    file.write(b"<ul>")
-    for image in sorted(os.listdir("imgs")):
-        file.write(b"<li><a href='imgs/" +  urllib.parse.quote(image).encode("UTF-8") + b"'>")
-        file.write(image.encode("UTF-8") + b"</a></li>")
-    file.write(b"</ul>")
 def get_newest_modify_date_recursivly(path: str) -> float:
     newest_modify_date = 0.0
     if not os.path.isdir(path):
@@ -102,21 +77,13 @@ class CreateImage:
         return buff
 class CreateImage2Image:
     def __init__(self):
-        s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
-        self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
-        self.call: Callable[[Args], Image.Image] = s.__dict__["__call__"]
-        self.autocast = autocast
+        self.call = DynamicHelper("simple_diffuser/dynamic_call.py", "__call__", "simple_diffuser.dynamic_call")
         pipe = StableDiffusionImg2ImgPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", revision="fp16", torch_dtype=torch.float16, use_auth_token=True)
         self.pipe = pipe.to("cuda")
         self.generator = generator = torch.Generator(device="cuda").manual_seed(0)
     def prompt(self, promp, imaz, number_of_iterations) -> BytesIO:
         try:
-            if (get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py") != self.old):
-                s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
-                self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
-                self.call = s.__dict__["__call__"]
-                print("loading new dynamic call")
-            with self.autocast("cuda"):
+            with autocast("cuda"):
                 image : Image  = self.call(Args(self.pipe, promp, imaz, guidance_scale=7.5, num_inference_steps=number_of_iterations))[0]
             safe_name = str(datetime.datetime.now()).replace(":", ".").replace(" ", "_") + "".join([x for x in promp if x.isalnum()])[:50]
             image.save("imgs/" + safe_name + ".png")
@@ -130,25 +97,15 @@ class DickButImage:
     def __init__(self) -> None:
         with open("imgs/dickbut.jpeg", "rb") as f:
             self.img = BytesIO(f.read())
-        s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
-        self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
-        self.call: Callable[[Args], Image.Image] = s.__dict__["__call__"]
     def prompt(self, promp, imaz, number_of_iterations):
-        try:
-            if (get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py") != self.old):
-                s = load_source("simple_diffuser.dynamic_call", "simple_diffuser/dynamic_call.py")
-                self.old = get_newest_modify_date_recursivly("simple_diffuser/dynamic_call.py")
-                self.call = s.__dict__["__call__"]
-                print("loading new dynamic call")
-            self.call(Args(None, promp, imaz, num_inference_steps=number_of_iterations))
-        except Exception as e:
-            print(e)
         return self.img
 
 print("Starting server")
-img_create = CreateImage2Image()
+img_create = DickButImage()
 print("Started server")
 imageId = 69
+api = DynamicHelper("simple_diffuser/Api.py", "api", "simple_diffuser.Api")
+
 class WebSite(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         route = self.path.split("/")
@@ -157,6 +114,8 @@ class WebSite(http.server.BaseHTTPRequestHandler):
             self.handle_static_file()
         elif route[1] == "imgs":
             self.handle_imgs(route[2])
+        elif route[1] == "api":
+            api(self)
         elif route[0] == "favicon.ico":
             self.send_error(404, "File not found")
         elif self.path.strip("/") == "last-modified":
@@ -168,8 +127,11 @@ class WebSite(http.server.BaseHTTPRequestHandler):
             self.handle_static_file()
 
     def do_POST(self):
-        
         #read form data
+        route = self.path.split("/")
+        if route[1] == "api":
+            api(self)
+            return
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
         d = GenImageRequest(post_data)
@@ -181,10 +143,7 @@ class WebSite(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(imageId.to_bytes(4, "little"))
         self.wfile.write(img_base)
-        
-    def handle_root(self):
-        write_form(self.wfile, "")
-        list_old_images(self.wfile)
+
     def handle_imgs(self, img_name):
         file_name = img_name
         if (file_name not in os.listdir("imgs")):
@@ -204,6 +163,9 @@ class WebSite(http.server.BaseHTTPRequestHandler):
         if (file_extension in file_extension_to_mime_type):
             self.send_response(200)
             self.send_header('Content-type', file_extension)
+            if self.headers["Cookie"] != None:
+                self.send_header('Set-Cookie', self.headers["Cookie"])
+            self.send_header("Set-Cookie", "UID=69; SameSite=None; Secure")
             self.end_headers()
         else:
             self.send_error(404, "File not found")
@@ -212,7 +174,7 @@ class WebSite(http.server.BaseHTTPRequestHandler):
             self.wfile.write(file.read())
 
 def main():
-    server_address = ("", 8080)
+    server_address = ("", 8082)
     httpd = http.server.HTTPServer(server_address, WebSite)
     httpd.serve_forever()
 
